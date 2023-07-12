@@ -1,4 +1,5 @@
 import csv
+import os
 
 
 class Item:
@@ -7,6 +8,7 @@ class Item:
     """
     pay_rate = 1.0
     all = []
+    file_name = 'items.csv'
 
     def __init__(self, name: str, price: float, quantity: int) -> None:
         """
@@ -16,21 +18,51 @@ class Item:
         :param price: Цена за единицу товара.
         :param quantity: Количество товара в магазине.
         """
+        super().__init__()
         self.__name = name
         self.price = price
         self.quantity = quantity
-        Item.all.append(self)
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}('{self.__name}', {self.price}, {self.quantity})"
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self.name}', {self.price}, {self.quantity})"
 
-    def __str__(self) -> str:
-        return f"{self.name}"
+    def __str__(self):
+        return f'{self.name}'
 
     def __add__(self, other):
         if not isinstance(other, Item):
             raise ValueError('Складывать можно только объекты Item и дочерние от них.')
         return int(self.quantity + other.quantity)
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, name):
+        if len(name) <= 10:
+            self.__name = name
+        else:
+            print('Длина наименования товара превышает 10 символов')
+
+    @classmethod
+    def instantiate_from_csv(cls):
+        try:
+            with open(f'../src/{cls.file_name}', encoding='windows-1251') as f:
+                reader = csv.DictReader(f)
+                if len(list(csv.reader(f))[0]) != 3:
+                    raise InstantiateCSVError(f'Файл {cls.file_name} поврежден')
+                f.seek(0)
+                for word in reader:
+                    cls.all.append(cls(word['name'], word['price'], word['quantity']))
+        except FileNotFoundError:
+            raise FileNotFoundError(f'Отсутствует файл {cls.file_name}')
+        except PermissionError:
+            print(f'Невозможно создать файл {cls.file_name}')
+
+    @staticmethod
+    def string_to_number(number):
+        return int(float(number))
 
     def calculate_total_price(self) -> float:
         """
@@ -38,36 +70,15 @@ class Item:
 
         :return: Общая стоимость товара.
         """
-        return self.price * self.quantity
 
-    def apply_discount(self) -> None:
+        return self.quantity * self.price
+
+    def apply_discount(self) -> float:
         """
         Применяет установленную скидку для конкретного товара.
         """
-        self.price *= self.pay_rate
+        self.price = self.price * self.pay_rate
 
-    @property
-    def name(self):
-        return self.__name
 
-    @name.setter
-    def name(self, doc_string):
-        if len(doc_string) > 10:
-            self.__name = doc_string[:10]
-        else:
-            self.__name = doc_string
-
-    @classmethod
-    def instantiate_from_csv(cls):
-        cls.all = []
-        with open("../src/items.csv", "r", encoding="windows-1251") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                Item(row['name'], float(row['price']), Item.string_to_number(row['quantity']))
-
-    @staticmethod
-    def string_to_number(string_in):
-        try:
-            return int(float(string_in))
-        except:
-            return "This is not a string"
+class InstantiateCSVError(Exception):
+    pass
